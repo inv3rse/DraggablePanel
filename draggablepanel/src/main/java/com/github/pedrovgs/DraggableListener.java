@@ -42,4 +42,28 @@ public interface DraggableListener {
    * Called when the view is closed to the right.
    */
   void onClosedToRight();
+
+  /**
+   * Called when the view is being touched at present
+   */
+
+  void onTouchListener();
+
+  /**
+   * Called when the view is maximized with click instead of drag
+   */
+
+  void clickedToMaximize();
+
+  /**
+   * Called when the view is minimized with click instead of drag
+   */
+
+  void clickedToMinimize();
+
+  /**
+   * Called when the view is being dragged to either minimize or maximize
+   */
+
+  void smoothSlide();
 }
