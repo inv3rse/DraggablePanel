@@ -715,7 +715,8 @@ public class DraggableView extends RelativeLayout {
         attributes.getResourceId(R.styleable.draggable_view_top_view_id, R.id.drag_view);
     this.secondViewId =
         attributes.getResourceId(R.styleable.draggable_view_bottom_view_id, R.id.second_view);
-    this.orientationForEvents = attributes.getString(R.styleable.draggable_view_orientation_for_events);
+    this.orientationForEvents =
+        attributes.getString(R.styleable.draggable_view_orientation_for_events);
     if (this.orientationForEvents == null
         || !orientationForEvents.equals("all")
         && !orientationForEvents.equals("portrait")
@@ -826,8 +827,8 @@ public class DraggableView extends RelativeLayout {
   /**
    * Notify te view is touched to drag in any directions
    */
-  private void notifyTouchEventListener(MotionEvent ev){
-    if (listener != null){
+  private void notifyTouchEventListener(MotionEvent ev) {
+    if (listener != null) {
       listener.onTouchListener(ev);
     }
   }
@@ -835,8 +836,8 @@ public class DraggableView extends RelativeLayout {
   /**
    * Notify when the smooth sliding of DraggableView is in process
    */
-  private void notifySmoothSlideListener(){
-    if (listener != null){
+  private void notifySmoothSlideListener() {
+    if (listener != null) {
       listener.onSmoothSlide();
     }
   }
@@ -844,8 +845,8 @@ public class DraggableView extends RelativeLayout {
   /**
    * Notify when the minimized view is clicked to maximize
    */
-  private void notifyClickedToMaximizeListener(){
-    if (listener != null){
+  private void notifyClickedToMaximizeListener() {
+    if (listener != null) {
       listener.onClickedToMaximize();
     }
   }
@@ -853,8 +854,8 @@ public class DraggableView extends RelativeLayout {
   /**
    * Notify when the maximized view is clicked to minimize
    */
-  private void notifyClickedToMinimizeListener(){
-    if (listener != null){
+  private void notifyClickedToMinimizeListener() {
+    if (listener != null) {
       listener.onClickedToMinimize();
     }
   }
