@@ -15,6 +15,8 @@
  */
 package com.github.pedrovgs;
 
+import android.view.MotionEvent;
+
 /**
  * Listener created to be notified when some drag actions are performed over DraggablePanel or
  * DraggableView instances.
@@ -47,23 +49,23 @@ public interface DraggableListener {
    * Called when the view is being touched at present
    */
 
-  void onTouchListener();
+  void onTouchListener(MotionEvent ev);
 
   /**
    * Called when the view is maximized with click instead of drag
    */
 
-  void clickedToMaximize();
+  void onClickedToMaximize();
 
   /**
    * Called when the view is minimized with click instead of drag
    */
 
-  void clickedToMinimize();
+  void onClickedToMinimize();
 
   /**
    * Called when the view is being dragged to either minimize or maximize
    */
 
-  void smoothSlide();
+  void onSmoothSlide();
 }

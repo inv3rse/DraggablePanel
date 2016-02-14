@@ -13,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.github.pedrovgs;
 
 import android.content.Context;
+import android.content.res.Configuration;
 import android.content.res.TypedArray;
 import android.graphics.drawable.Drawable;
 import android.support.v4.app.Fragment;
@@ -36,6 +38,7 @@ import com.nineoldandroids.view.ViewHelper;
  *
  * @author Pedro Vicente Gómez Sánchez
  */
+
 public class DraggableView extends RelativeLayout {
 
   private static final int DEFAULT_SCALE_FACTOR = 2;
@@ -75,9 +78,7 @@ public class DraggableView extends RelativeLayout {
   private float scaleFactorX, scaleFactorY;
   private int marginBottom, marginRight;
   private int dragViewId, secondViewId;
-
-  private CountDownTimer onMinimizeCountdownTimer;
-  private CountDownTimer onMaximizeCountdownTimer;
+  private String orientationForEvents = "all";
 
   private boolean clickedToMaximize;
   private boolean clickedToMinimize;
@@ -249,7 +250,6 @@ public class DraggableView extends RelativeLayout {
    */
   public void maximize() {
     smoothSlideTo(SLIDE_TOP);
-    onMaximizeCountdownTimer.start();
   }
 
   /**
@@ -258,7 +258,6 @@ public class DraggableView extends RelativeLayout {
    */
   public void minimize() {
     smoothSlideTo(SLIDE_BOTTOM);
-    onMinimizeCountdownTimer.start();
   }
 
   /**
@@ -266,7 +265,7 @@ public class DraggableView extends RelativeLayout {
    */
   public void closeToRight() {
     if (viewDragHelper.smoothSlideViewTo(dragView, transformer.getOriginalWidth(),
-            getHeight() - transformer.getMinHeightPlusMargin())) {
+        getHeight() - transformer.getMinHeightPlusMargin())) {
       ViewCompat.postInvalidateOnAnimation(this);
       notifyCloseToRightListener();
     }
@@ -277,7 +276,7 @@ public class DraggableView extends RelativeLayout {
    */
   public void closeToLeft() {
     if (viewDragHelper.smoothSlideViewTo(dragView, -transformer.getOriginalWidth(),
-            getHeight() - transformer.getMinHeightPlusMargin())) {
+        getHeight() - transformer.getMinHeightPlusMargin())) {
       ViewCompat.postInvalidateOnAnimation(this);
       notifyCloseToLeftListener();
     }
@@ -365,7 +364,7 @@ public class DraggableView extends RelativeLayout {
    * @return true if the touch event is realized over the drag or second view.
    */
   @Override public boolean onTouchEvent(MotionEvent ev) {
-    listener.onTouchListener();
+    notifyTouchEventListener(ev);
     int actionMasked = MotionEventCompat.getActionMasked(ev);
     if ((actionMasked & MotionEventCompat.ACTION_MASK) == MotionEvent.ACTION_DOWN) {
       activePointerId = MotionEventCompat.getPointerId(ev, actionMasked);
@@ -373,9 +372,20 @@ public class DraggableView extends RelativeLayout {
     if (activePointerId == INVALID_POINTER) {
       return false;
     }
-    if(getContext().getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT){
+    if (orientationForEvents.equals("all")) {
       viewDragHelper.processTouchEvent(ev);
+    } else if (orientationForEvents.equals("portrait")) {
+      if (getContext().getResources().getConfiguration().orientation
+          == Configuration.ORIENTATION_PORTRAIT) {
+        viewDragHelper.processTouchEvent(ev);
+      }
+    } else if (orientationForEvents.equals("landscape")) {
+      if (getContext().getResources().getConfiguration().orientation
+          == Configuration.ORIENTATION_LANDSCAPE) {
+        viewDragHelper.processTouchEvent(ev);
+      }
     }
+
     if (isClosed()) {
       return false;
     }
@@ -391,7 +401,7 @@ public class DraggableView extends RelativeLayout {
   }
 
   private void analyzeTouchToMaximizeIfNeeded(MotionEvent ev, boolean isDragViewHit) {
-    switch(ev.getAction()) {
+    switch (ev.getAction()) {
       case MotionEvent.ACTION_DOWN:
         lastTouchActionDownXPosition = ev.getX();
         break;
@@ -399,11 +409,11 @@ public class DraggableView extends RelativeLayout {
         float clickOffset = ev.getX() - lastTouchActionDownXPosition;
         if (shouldMaximizeOnClick(ev, clickOffset, isDragViewHit)) {
           if (isMinimized() && isClickToMaximizeEnabled()) {
-            listener.clickedToMaximize();
+            notifyClickedToMaximizeListener();
             clickedToMaximize = true;
             maximize();
           } else if (isMaximized() && isClickToMinimizeEnabled()) {
-            listener.clickedToMinimize();
+            notifyClickedToMinimizeListener();
             clickedToMinimize = true;
             minimize();
           }
@@ -416,8 +426,8 @@ public class DraggableView extends RelativeLayout {
 
   public boolean shouldMaximizeOnClick(MotionEvent ev, float deltaX, boolean isDragViewHit) {
     return (Math.abs(deltaX) < MIN_SLIDING_DISTANCE_ON_CLICK)
-            && ev.getAction() != MotionEvent.ACTION_MOVE
-            && isDragViewHit;
+        && ev.getAction() != MotionEvent.ACTION_MOVE
+        && isDragViewHit;
   }
 
   /**
@@ -432,16 +442,16 @@ public class DraggableView extends RelativeLayout {
    */
   private MotionEvent cloneMotionEventWithAction(MotionEvent event, int action) {
     return MotionEvent.obtain(event.getDownTime(), event.getEventTime(), action, event.getX(),
-            event.getY(), event.getMetaState());
+        event.getY(), event.getMetaState());
   }
 
   /**
    * Override method to configure the dragged view and secondView layout properly.
    */
   @Override protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
-    if (isInEditMode())
+    if (isInEditMode()) {
       super.onLayout(changed, left, top, right, bottom);
-    else if (isDragViewAtTop()) {
+    } else if (isDragViewAtTop()) {
       dragView.layout(left, top, right, transformer.getOriginalHeight());
       secondView.layout(left, transformer.getOriginalHeight(), right, bottom);
       ViewHelper.setY(dragView, top);
@@ -534,6 +544,11 @@ public class DraggableView extends RelativeLayout {
    */
   void changeSecondViewAlpha() {
     ViewHelper.setAlpha(secondView, 1 - getVerticalDragOffset());
+    if (getSecondViewAlpha() > 0.95) {
+      notifyMaximizeToListener();
+    } else if (getSecondViewAlpha() < 0.15) {
+      notifyMinimizeToListener();
+    }
   }
 
   /**
@@ -629,9 +644,9 @@ public class DraggableView extends RelativeLayout {
     int screenX = parentLocation[0] + x;
     int screenY = parentLocation[1] + y;
     return screenX >= viewLocation[0]
-            && screenX < viewLocation[0] + view.getWidth()
-            && screenY >= viewLocation[1]
-            && screenY < viewLocation[1] + view.getHeight();
+        && screenX < viewLocation[0] + view.getWidth()
+        && screenY >= viewLocation[1]
+        && screenY < viewLocation[1] + view.getHeight();
   }
 
   /**
@@ -648,7 +663,8 @@ public class DraggableView extends RelativeLayout {
    * Initialize the viewDragHelper.
    */
   private void initializeViewDragHelper() {
-    viewDragHelper = ViewDragHelper.create(this, SENSITIVITY, new DraggableViewCallback(this, dragView));
+    viewDragHelper =
+        ViewDragHelper.create(this, SENSITIVITY, new DraggableViewCallback(this, dragView));
   }
 
   /**
@@ -672,30 +688,42 @@ public class DraggableView extends RelativeLayout {
   private void initializeAttributes(AttributeSet attrs) {
     TypedArray attributes = getContext().obtainStyledAttributes(attrs, R.styleable.draggable_view);
     this.enableHorizontalAlphaEffect =
-            attributes.getBoolean(R.styleable.draggable_view_enable_minimized_horizontal_alpha_effect,
-                    DEFAULT_ENABLE_HORIZONTAL_ALPHA_EFFECT);
+        attributes.getBoolean(R.styleable.draggable_view_enable_minimized_horizontal_alpha_effect,
+            DEFAULT_ENABLE_HORIZONTAL_ALPHA_EFFECT);
     this.enableClickToMaximize =
-            attributes.getBoolean(R.styleable.draggable_view_enable_click_to_maximize_view,
-                    DEFAULT_ENABLE_CLICK_TO_MAXIMIZE);
+        attributes.getBoolean(R.styleable.draggable_view_enable_click_to_maximize_view,
+            DEFAULT_ENABLE_CLICK_TO_MAXIMIZE);
     this.enableClickToMinimize =
-            attributes.getBoolean(R.styleable.draggable_view_enable_click_to_minimize_view,
-                    DEFAULT_ENABLE_CLICK_TO_MINIMIZE);
+        attributes.getBoolean(R.styleable.draggable_view_enable_click_to_minimize_view,
+            DEFAULT_ENABLE_CLICK_TO_MINIMIZE);
     this.topViewResize =
-            attributes.getBoolean(R.styleable.draggable_view_top_view_resize, DEFAULT_TOP_VIEW_RESIZE);
-    this.topViewHeight = attributes.getDimensionPixelSize(R.styleable.draggable_view_top_view_height,
+        attributes.getBoolean(R.styleable.draggable_view_top_view_resize, DEFAULT_TOP_VIEW_RESIZE);
+    this.topViewHeight =
+        attributes.getDimensionPixelSize(R.styleable.draggable_view_top_view_height,
             DEFAULT_TOP_VIEW_HEIGHT);
     this.scaleFactorX = attributes.getFloat(R.styleable.draggable_view_top_view_x_scale_factor,
-            DEFAULT_SCALE_FACTOR);
+        DEFAULT_SCALE_FACTOR);
     this.scaleFactorY = attributes.getFloat(R.styleable.draggable_view_top_view_y_scale_factor,
-            DEFAULT_SCALE_FACTOR);
-    this.marginBottom = attributes.getDimensionPixelSize(R.styleable.draggable_view_top_view_margin_bottom,
+        DEFAULT_SCALE_FACTOR);
+    this.marginBottom =
+        attributes.getDimensionPixelSize(R.styleable.draggable_view_top_view_margin_bottom,
             DEFAULT_TOP_VIEW_MARGIN);
-    this.marginRight = attributes.getDimensionPixelSize(R.styleable.draggable_view_top_view_margin_right,
+    this.marginRight =
+        attributes.getDimensionPixelSize(R.styleable.draggable_view_top_view_margin_right,
             DEFAULT_TOP_VIEW_MARGIN);
     this.dragViewId =
-            attributes.getResourceId(R.styleable.draggable_view_top_view_id, R.id.drag_view);
+        attributes.getResourceId(R.styleable.draggable_view_top_view_id, R.id.drag_view);
     this.secondViewId =
-            attributes.getResourceId(R.styleable.draggable_view_bottom_view_id, R.id.second_view);
+        attributes.getResourceId(R.styleable.draggable_view_bottom_view_id, R.id.second_view);
+    this.orientationForEvents = attributes.getString(R.styleable.draggable_view_orientation_for_events);
+    if (this.orientationForEvents == null
+        || !orientationForEvents.equals("all")
+        && !orientationForEvents.equals("portrait")
+        && !orientationForEvents.equals("landscape")) {
+      //Default is to work in both orientation
+      //Ensures to handle wrong entry for attr
+      this.orientationForEvents = "all";
+    }
     attributes.recycle();
   }
 
@@ -707,7 +735,7 @@ public class DraggableView extends RelativeLayout {
    * @return true if the view is slided.
    */
   private boolean smoothSlideTo(float slideOffset) {
-    listener.smoothSlide();
+    notifySmoothSlideListener();
     final int topBound = getPaddingTop();
     int x = (int) (slideOffset * (getWidth() - transformer.getMinWidthPlusMarginRight()));
     int y = (int) (topBound + slideOffset * getVerticalDragRange());
@@ -795,76 +823,75 @@ public class DraggableView extends RelativeLayout {
     }
   }
 
+  /**
+   * Notify te view is touched to drag in any directions
+   */
+  private void notifyTouchEventListener(MotionEvent ev){
+    if (listener != null){
+      listener.onTouchListener(ev);
+    }
+  }
+
+  /**
+   * Notify when the smooth sliding of DraggableView is in process
+   */
+  private void notifySmoothSlideListener(){
+    if (listener != null){
+      listener.onSmoothSlide();
+    }
+  }
+
+  /**
+   * Notify when the minimized view is clicked to maximize
+   */
+  private void notifyClickedToMaximizeListener(){
+    if (listener != null){
+      listener.onClickedToMaximize();
+    }
+  }
+
+  /**
+   * Notify when the maximized view is clicked to minimize
+   */
+  private void notifyClickedToMinimizeListener(){
+    if (listener != null){
+      listener.onClickedToMinimize();
+    }
+  }
+
   public int getDraggedViewHeightPlusMarginTop() {
     return transformer.getMinHeightPlusMargin();
   }
 
-  public void initializeTimers(){
-
-    onMaximizeCountdownTimer = new CountDownTimer(2000, 10) {
-      @Override
-      public void onTick(long l) {
-
-        if (getSecondViewAlpha() > 0.95) {
-          notifyMaximizeToListener();
-          new Handler().post(new Runnable() {
-            @Override
-            public void run() {
-              onMaximizeCountdownTimer.cancel();
-            }
-          });
-        }
-      }
-
-      @Override
-      public void onFinish() {
-
-      }
-    };
-
-    onMinimizeCountdownTimer = new CountDownTimer(2000,10) {
-      @Override
-      public void onTick(long l) {
-        if (getSecondViewAlpha() < 0.15) {
-          notifyMinimizeToListener();
-          new Handler().post(new Runnable() {
-            @Override
-            public void run() {
-              onMinimizeCountdownTimer.cancel();
-            }
-          });
-        }
-      }
-
-      @Override
-      public void onFinish() {
-
-      }
-    };
-  }
-
-  public float getSecondViewAlpha(){
+  public float getSecondViewAlpha() {
     return secondView.getAlpha();
   }
 
-  public boolean isClickedMaximize(){
+  public boolean isClickedMaximize() {
     return clickedToMaximize;
   }
 
-  public void setClickedtoMaximize(){
+  public void setClickedtoMaximize() {
     clickedToMaximize = false;
   }
 
-  public boolean isClickedMinimize(){
+  public boolean isClickedMinimize() {
     return clickedToMinimize;
   }
 
-  public void minimizeButtonClicked(){
+  public void minimizeButtonClicked() {
     clickedToMinimize = true;
   }
 
-  public void setClickedtoMinimize(){
+  public void setClickedtoMinimize() {
     clickedToMinimize = false;
   }
 
+  public String getorientationForEvents() {
+    return orientationForEvents;
+  }
+
+  public void setorientationForEvents(String orientationForEvents) {
+    this.orientationForEvents = orientationForEvents;
+  }
 }
